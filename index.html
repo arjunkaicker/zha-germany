@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>ZHA in Germany: Resuming the Conversation</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;0,900;1,400;1,700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --accent:#b5322a;
+  --accent-light:#d04040;
+  --accent-dim:rgba(181,50,42,0.12);
+  --bg:#080808;
+  --surface:#101010;
+  --surface2:#161616;
+  --border:rgba(255,255,255,0.07);
+  --text:#e0e0e0;
+  --muted:#777;
+  --muted-light:#999;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;overflow-x:hidden}
+
+/* SCROLL PROGRESS */
+#progress-bar{position:fixed;top:0;left:0;height:2px;background:var(--accent);z-index:9999;width:0%;transition:width 0.1s}
+
+/* NAV */
+nav{position:fixed;top:0;left:0;right:0;z-index:1000;padding:20px 48px;display:flex;justify-content:space-between;align-items:center;transition:transform 0.3s,background 0.3s}
+nav.scrolled{background:rgba(8,8,8,0.92);backdrop-filter:blur(16px);border-bottom:1px solid var(--border)}
+nav.hidden{transform:translateY(-100%)}
+.nav-logo{display:flex;flex-direction:column;gap:2px}
+.nav-logo-main{font-family:'Playfair Display',serif;font-size:16px;font-weight:700;letter-spacing:2px;text-transform:uppercase}
+.nav-logo-sub{font-size:10px;color:var(--accent);letter-spacing:3px;text-transform:uppercase}
+.nav-links{display:flex;gap:32px;list-style:none}
+.nav-links a{color:var(--muted);text-decoration:none;font-size:12px;font-weight:500;letter-spacing:1px;text-transform:uppercase;transition:color 0.2s}
+.nav-links a:hover,.nav-links a.active{color:var(--text)}
+
+/* TIMELINE DOTS */
+#timeline-nav{position:fixed;right:28px;top:50%;transform:translateY(-50%);z-index:900;display:flex;flex-direction:column;gap:14px}
+.t-dot{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,0.15);cursor:pointer;transition:all 0.3s;position:relative}
+.t-dot.active,.t-dot:hover{background:var(--accent);transform:scale(1.6)}
+.t-dot::after{content:attr(data-label);position:absolute;right:18px;top:50%;transform:translateY(-50%);font-size:10px;color:var(--muted);white-space:nowrap;opacity:0;pointer-events:none;transition:opacity 0.2s;letter-spacing:1px}
+.t-dot:hover::after{opacity:1}
+
+/* HERO */
+#hero{height:100vh;position:relative;display:flex;align-items:flex-end;overflow:hidden}
+.hero-bg{position:absolute;inset:0;background:url('images/hero.jpg') center/cover no-repeat;filter:brightness(0.25)}
+.hero-gradient{position:absolute;inset:0;background:linear-gradient(to top,rgba(8,8,8,1) 0%,rgba(8,8,8,0.4) 60%,transparent 100%)}
+.hero-content{position:relative;z-index:2;padding:0 80px 80px;max-width:1100px}
+.hero-eyebrow{display:flex;align-items:center;gap:16px;margin-bottom:32px}
+.hero-eyebrow-line{width:40px;height:1px;background:var(--accent)}
+.hero-eyebrow-text{font-size:11px;letter-spacing:4px;text-transform:uppercase;color:var(--accent)}
+.hero-title{font-family:'Playfair Display',serif;font-size:clamp(48px,7vw,88px);font-weight:900;line-height:1.0;margin-bottom:32px}
+.hero-title em{font-style:italic;color:rgba(224,224,224,0.5)}
+.hero-intro{font-size:18px;color:rgba(224,224,224,0.6);max-width:640px;line-height:1.8;font-weight:300;margin-bottom:48px}
+.hero-scroll{display:flex;align-items:center;gap:16px;color:var(--muted);font-size:11px;letter-spacing:3px;text-transform:uppercase}
+.scroll-line{width:60px;height:1px;background:var(--accent)}
+
+/* READING WIDTH CONTAINER */
+.read{max-width:760px;margin:0 auto;padding:0 40px}
+.wide{max-width:1200px;margin:0 auto;padding:0 48px}
+
+/* CHAPTER OPENERS */
+.chapter{padding:120px 0 80px}
+.chapter-number{font-size:120px;font-weight:700;font-family:'Playfair Display',serif;color:rgba(255,255,255,0.03);line-height:1;margin-bottom:-40px;padding-left:40px}
+.chapter-label{font-size:11px;letter-spacing:4px;text-transform:uppercase;color:var(--accent);margin-bottom:20px}
+.chapter-title{font-family:'Playfair Display',serif;font-size:clamp(32px,4.5vw,58px);font-weight:700;line-height:1.1;margin-bottom:32px}
+.chapter-lead{font-size:17px;color:rgba(224,224,224,0.65);line-height:1.9;font-weight:300;margin-bottom:48px}
+.chapter-lead strong{color:var(--text);font-weight:500}
+
+/* BODY TEXT */
+.body-text{font-size:16px;line-height:1.9;color:rgba(224,224,224,0.7);margin-bottom:28px;font-weight:300}
+.body-text strong{color:var(--text);font-weight:500}
+.pull-quote{font-family:'Playfair Display',serif;font-size:clamp(22px,3vw,32px);font-style:italic;color:rgba(224,224,224,0.85);line-height:1.5;padding:40px 0 40px 40px;border-left:3px solid var(--accent);margin:48px 0}
+
+/* REVEAL */
+.reveal{opacity:0;transform:translateY(30px);transition:opacity 0.8s ease,transform 0.8s ease}
+.reveal.visible{opacity:1;transform:none}
+.reveal-delay-1{transition-delay:0.15s}
+.reveal-delay-2{transition-delay:0.3s}
+.reveal-delay-3{transition-delay:0.45s}
+
+/* FULL-BLEED IMAGE */
+.full-bleed{width:100%;aspect-ratio:21/9;object-fit:cover;display:block;filter:brightness(0.7)}
+.full-bleed-caption{padding:12px 48px;font-size:11px;color:var(--muted);letter-spacing:1px;border-bottom:1px solid var(--border)}
+
+/* IMAGE + TEXT PAIRS */
+.image-text-pair{display:grid;grid-template-columns:1fr 1fr;gap:0;margin:60px 0}
+.image-text-pair img{width:100%;height:100%;object-fit:cover;filter:brightness(0.7)}
+.image-text-pair-content{padding:60px;display:flex;flex-direction:column;justify-content:center;background:var(--surface)}
+.image-text-pair-content .label{font-size:10px;letter-spacing:3px;text-transform:uppercase;color:var(--accent);margin-bottom:16px}
+.image-text-pair-content h3{font-family:'Playfair Display',serif;font-size:28px;margin-bottom:20px;line-height:1.3}
+.image-text-pair-content p{font-size:14px;color:rgba(224,224,224,0.65);line-height:1.8}
+.image-text-pair.reverse{direction:rtl}
+.image-text-pair.reverse>*{direction:ltr}
+
+/* GERMAN PROJECTS - TIMELINE STRIP */
+.project-timeline{display:grid;grid-template-columns:repeat(3,1fr);gap:2px;margin:60px 0}
+.project-card{position:relative;overflow:hidden;cursor:pointer}
+.project-card img{width:100%;aspect-ratio:4/3;object-fit:cover;filter:brightness(0.45);transition:filter 0.5s}
+.project-card:hover img{filter:brightness(0.65)}
+.project-card-overlay{position:absolute;inset:0;padding:32px;display:flex;flex-direction:column;justify-content:flex-end}
+.project-year{font-size:40px;font-weight:700;font-family:'Playfair Display',serif;color:rgba(181,50,42,0.3);line-height:1;margin-bottom:8px}
+.project-name{font-family:'Playfair Display',serif;font-size:20px;font-weight:700;margin-bottom:6px}
+.project-location{font-size:11px;color:var(--muted-light);letter-spacing:2px;text-transform:uppercase;margin-bottom:12px}
+.project-desc{font-size:13px;color:rgba(224,224,224,0.65);line-height:1.7;max-width:320px}
+
+/* PERCEPTION GAP - ACCORDION */
+.perception-cards{display:flex;flex-direction:column;gap:1px;margin:48px 0}
+.perception-item{background:var(--surface);overflow:hidden}
+.perception-header{padding:28px 36px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;border-left:3px solid transparent;transition:border-color 0.3s}
+.perception-item.open .perception-header{border-left-color:var(--accent)}
+.perception-q{font-size:16px;font-weight:500;letter-spacing:0.2px}
+.perception-toggle{width:28px;height:28px;border:1px solid var(--border);border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:16px;flex-shrink:0;transition:all 0.3s}
+.perception-item.open .perception-toggle{background:var(--accent);border-color:var(--accent);color:#fff;transform:rotate(45deg)}
+.perception-body{display:none;padding:0 36px 28px}
+.perception-body.open{display:grid;grid-template-columns:1fr 1fr;gap:40px}
+.perception-col h4{font-size:11px;letter-spacing:3px;text-transform:uppercase;color:var(--muted);margin-bottom:16px}
+.perception-col.answer h4{color:var(--accent)}
+.perception-col p{font-size:14px;color:rgba(224,224,224,0.65);line-height:1.8}
+
+/* VALUES ALIGNMENT GRID */
+.values-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:2px;margin:48px 0}
+.value-pair{display:grid;grid-template-columns:1fr 1fr;gap:0}
+.value-side{padding:40px 36px;font-size:14px;line-height:1.8;color:rgba(224,224,224,0.65)}
+.value-side.german{background:var(--surface);border-left:3px solid rgba(255,255,255,0.1)}
+.value-side.zha{background:var(--accent-dim);border-left:3px solid var(--accent)}
+.value-side .v-label{font-size:10px;letter-spacing:3px;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
+.value-side .v-title{font-family:'Playfair Display',serif;font-size:17px;font-weight:600;color:var(--text);margin-bottom:12px}
+.values-header{display:grid;grid-template-columns:1fr 1fr;gap:0;margin-bottom:2px}
+.values-header-col{padding:16px 36px;font-size:10px;letter-spacing:3px;text-transform:uppercase}
+.values-header-col.german{color:var(--muted);background:var(--surface2)}
+.values-header-col.zha{color:var(--accent);background:var(--accent-dim)}
+
+/* STATS ROW */
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:0;border-top:1px solid var(--border);border-bottom:1px solid var(--border);margin:60px 0}
+.stat-item{padding:48px 40px;border-right:1px solid var(--border);text-align:center}
+.stat-item:last-child{border-right:none}
+.stat-num{font-family:'Playfair Display',serif;font-size:52px;font-weight:700;color:var(--accent);line-height:1;margin-bottom:8px}
+.stat-desc{font-size:12px;color:var(--muted);line-height:1.6;letter-spacing:0.3px}
+
+/* DIVIDER */
+.section-divider{border:none;height:1px;background:var(--border);margin:80px 0}
+
+/* PRECEDENTS */
+.precedents-list{display:flex;flex-direction:column;gap:2px;margin:48px 0}
+.precedent-row{display:grid;grid-template-columns:280px 1fr;gap:0;overflow:hidden;cursor:pointer;transition:opacity 0.3s}
+.precedent-row:hover{opacity:0.9}
+.precedent-img{width:100%;height:100%;min-height:200px;object-fit:cover;filter:brightness(0.6);transition:filter 0.4s}
+.precedent-row:hover .precedent-img{filter:brightness(0.8)}
+.precedent-content{padding:40px 48px;background:var(--surface);display:flex;flex-direction:column;justify-content:center}
+.precedent-meta{display:flex;gap:24px;margin-bottom:16px}
+.precedent-tag{font-size:10px;letter-spacing:3px;text-transform:uppercase;color:var(--accent)}
+.precedent-year{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--muted)}
+.precedent-content h3{font-family:'Playfair Display',serif;font-size:26px;margin-bottom:6px;line-height:1.3}
+.precedent-location{font-size:13px;color:var(--muted-light);margin-bottom:16px;letter-spacing:0.5px}
+.precedent-content p{font-size:14px;color:rgba(224,224,224,0.6);line-height:1.8;max-width:640px}
+.precedent-relevance{margin-top:16px;padding:12px 16px;background:rgba(181,50,42,0.08);border-left:2px solid var(--accent);font-size:13px;color:rgba(224,224,224,0.65);line-height:1.6}
+.precedent-relevance strong{color:var(--accent);font-size:10px;letter-spacing:2px;text-transform:uppercase;display:block;margin-bottom:4px}
+
+/* INVITATION SECTION */
+.invitation{padding:120px 0;text-align:center;position:relative;overflow:hidden}
+.invitation-bg{position:absolute;inset:0;background:url('images/berlin.jpg') center/cover no-repeat;filter:brightness(0.15)}
+.invitation-content{position:relative;z-index:2;max-width:760px;margin:0 auto;padding:0 40px}
+.invitation-content .chapter-label{margin-bottom:24px}
+.invitation-title{font-family:'Playfair Display',serif;font-size:clamp(36px,5vw,64px);font-weight:700;line-height:1.1;margin-bottom:32px}
+.invitation-text{font-size:17px;color:rgba(224,224,224,0.65);line-height:1.9;font-weight:300;margin-bottom:48px}
+.invitation-cta{display:inline-block;padding:16px 40px;border:1px solid var(--accent);color:var(--accent);font-size:12px;letter-spacing:3px;text-transform:uppercase;text-decoration:none;transition:all 0.3s}
+.invitation-cta:hover{background:var(--accent);color:#fff}
+
+/* LIGHTBOX */
+#lightbox{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.96);z-index:9999;align-items:center;justify-content:center;flex-direction:column;gap:20px}
+#lightbox.open{display:flex}
+#lightbox img{max-width:88vw;max-height:80vh;object-fit:contain}
+#lightbox-close{position:absolute;top:28px;right:36px;font-size:28px;color:var(--muted);cursor:pointer;line-height:1;letter-spacing:-1px}
+#lightbox-caption{font-size:13px;color:var(--muted);letter-spacing:1px;text-align:center;max-width:600px}
+
+/* FOOTER */
+footer{background:var(--surface);border-top:1px solid var(--border);padding:48px;display:flex;justify-content:space-between;align-items:center}
+.footer-logo{font-family:'Playfair Display',serif;font-size:22px;font-weight:700}
+.footer-logo span{color:var(--accent)}
+.footer-text{font-size:12px;color:var(--muted);text-align:right;line-height:1.8}
+
+/* RESPONSIVE */
+@media(max-width:900px){
+  .project-timeline,.values-grid,.stats-row,.precedent-row{grid-template-columns:1fr}
+  .value-pair,.values-header,.perception-body.open{grid-template-columns:1fr}
+  .image-text-pair{grid-template-columns:1fr}
+  .hero-content{padding:0 24px 60px}
+  .wide,.read{padding:0 24px}
+  nav{padding:16px 24px}
+  #timeline-nav{display:none}
+  .chapter-number{font-size:72px}
+}
+</style>
+</head>
+<body>
+
+<div id="progress-bar"></div>
+
+<nav id="main-nav">
+  <div class="nav-logo">
+    <div class="nav-logo-main">ZHA</div>
+    <div class="nav-logo-sub">Germany</div>
+  </div>
+  <ul class="nav-links">
+    <li><a href="#foundation">Foundation</a></li>
+    <li><a href="#legacy">Legacy</a></li>
+    <li><a href="#questions">Questions</a></li>
+    <li><a href="#values">Values</a></li>
+    <li><a href="#work">Work</a></li>
+    <li><a href="#invitation">Invitation</a></li>
+  </ul>
+</nav>
+
+<div id="timeline-nav">
+  <div class="t-dot" data-section="hero" data-label="Introduction"></div>
+  <div class="t-dot" data-section="foundation" data-label="Foundation"></div>
+  <div class="t-dot" data-section="legacy" data-label="German Legacy"></div>
+  <div class="t-dot" data-section="questions" data-label="Questions"></div>
+  <div class="t-dot" data-section="values" data-label="Alignment"></div>
+  <div class="t-dot" data-section="work" data-label="Work"></div>
+  <div class="t-dot" data-section="invitation" data-label="Invitation"></div>
+</div>
+
+<!-- HERO -->
+<section id="hero">
+  <div class="hero-bg"></div>
+  <div class="hero-gradient"></div>
+  <div class="hero-content">
+    <div class="hero-eyebrow">
+      <div class="hero-eyebrow-line"></div>
+      <div class="hero-eyebrow-text">Zaha Hadid Architects · Germany</div>
+    </div>
+    <h1 class="hero-title">Resuming<br/>the <em>conversation.</em></h1>
+    <p class="hero-intro">Germany gave us our first building. German engineers helped us prove our forms were possible. This is a reflection on that relationship — what it meant, where it paused, and why we believe the most interesting chapters are still ahead.</p>
+    <div class="hero-scroll">
+      <div class="scroll-line"></div>
+      <span>Read on</span>
+    </div>
+  </div>
+</section>
+
+<!-- CHAPTER 1: FOUNDATION -->
+<section id="foundation" class="chapter">
+  <div class="chapter-number reveal">01</div>
+  <div class="read">
+    <div class="reveal">
+      <div class="chapter-label">The Foundation</div>
+      <h2 class="chapter-title">Germany gave us our first chance.</h2>
+    </div>
+    <p class="body-text reveal reveal-delay-1">In 1993, when no one had yet built a Zaha Hadid building at scale, it was a German client who took the risk. The Vitra Fire Station at Weil am Rhein — a 270 square metre concrete structure on a furniture manufacturer's campus — was not a grand civic commission. But it was a proof of concept that changed everything.</p>
+    <p class="body-text reveal reveal-delay-2">The building demonstrated something that had only existed on paper and in theoretical drawings: that forms of this kind could be <strong>built precisely, responsibly and durably</strong>. It required German structural engineers and contractors to work in an entirely new way. They rose to the challenge. The result is still standing, still celebrated, and still visited by architects from across the world.</p>
+
+    <div class="pull-quote reveal">
+      "Before Weil am Rhein, our work lived in competitions and exhibitions. After it, we had a building in the world — and it was in Germany."
+    </div>
+
+    <p class="body-text reveal">That first act of trust set the tone for two subsequent decades of collaboration. BMW Leipzig and Phaeno Wolfsburg followed in 2005 — both with German clients, German contractors, German precision. The relationship was not incidental. It was foundational.</p>
+    <p class="body-text reveal">And then, gradually, it quietened. Not through any rupture — but through the accumulating distance of a practice working at global scale, and a German cultural and civic procurement world that moves carefully and asks hard questions. Those questions deserve honest answers, not marketing copy.</p>
+    <p class="body-text reveal">This is our attempt at that conversation.</p>
+  </div>
+</section>
+
+<!-- CHAPTER 2: THE THREE GERMAN BUILDINGS -->
+<section id="legacy" style="padding:0 0 120px">
+  <div class="chapter-number reveal wide">02</div>
+  <div class="read" style="margin-bottom:48px">
+    <div class="reveal">
+      <div class="chapter-label">The German Legacy</div>
+      <h2 class="chapter-title">Three buildings. Thirty years.</h2>
+    </div>
+    <p class="body-text reveal">The three completed ZHA buildings in Germany span twelve years and represent a significant arc: from a small, experimental structure that tested the limits of what was buildable, to a major piece of corporate infrastructure, to a public science institution serving hundreds of thousands of visitors. Each one was a collaboration. None of them would have been possible without German engineering culture.</p>
+  </div>
+
+  <div class="project-timeline wide reveal">
+    <div class="project-card" onclick="openLightbox('images/angular-arch.jpg','Vitra Fire Station, Weil am Rhein, 1993')">
+      <img src="images/angular-arch.jpg" alt="Vitra Fire Station"/>
+      <div class="project-card-overlay">
+        <div class="project-year">1993</div>
+        <div class="project-name">Vitra Fire Station</div>
+        <div class="project-location">Weil am Rhein</div>
+        <div class="project-desc">The first major built Zaha Hadid work. A 270 sqm fire station on the Vitra campus — angular, cantilevered, precisely realised in reinforced concrete. Proved that ZHA's formal language could be built. Now a listed monument and one of the most visited works of late 20th-century architecture.</div>
+      </div>
+    </div>
+
+    <div class="project-card" onclick="openLightbox('images/precision-industrial.jpg','BMW Central Building, Leipzig, 2005')">
+      <img src="images/precision-industrial.jpg" alt="BMW Central Building"/>
+      <div class="project-card-overlay">
+        <div class="project-year">2005</div>
+        <div class="project-name">BMW Central Building</div>
+        <div class="project-location">Leipzig</div>
+        <div class="project-desc">A three-storey administrative and logistics building at the heart of BMW's eastern German facility. Fluid, undulating forms integrated with the precision demands of automobile manufacturing. Demonstrated ZHA could work at corporate scale, within exacting functional briefs, with German industry as client and builder.</div>
+      </div>
+    </div>
+
+    <div class="project-card" onclick="openLightbox('images/civic-building.jpg','Phaeno Science Centre, Wolfsburg, 2005')">
+      <img src="images/civic-building.jpg" alt="Phaeno Science Centre"/>
+      <div class="project-card-overlay">
+        <div class="project-year">2005</div>
+        <div class="project-name">Phaeno Science Centre</div>
+        <div class="project-location">Wolfsburg</div>
+        <div class="project-desc">A 9,000 sqm public science museum, elevated on concrete pilotis above a generous public plaza. Built on a brownfield site between the railway station and the city centre. Optimised concrete structural forms reduced material waste. Serves an educational public mandate. Now one of Germany's most visited contemporary buildings.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="read" style="margin-top:48px">
+    <p class="body-text reveal">What these buildings share is not just formal language — it is the evidence of a working method that is <strong>inseparable from engineering rigour, material honesty and the patient translation of computational geometry into built reality</strong>. The Bauhaus held that art and craft should be unified. ZHA's approach in Germany has always argued the same thing: that complex form and precise execution are not in tension; they are the same ambition.</p>
+    <p class="body-text reveal">German contractors and engineers who worked on these projects did not simply execute drawings. They participated in finding the solutions. That collaborative relationship — between computational design and industrial fabrication — is something we want to resume.</p>
+  </div>
+</section>
+
+<img src="images/concrete-form.jpg" class="full-bleed reveal" alt="Architectural precision"/>
+<div class="full-bleed-caption">Computational geometry, material precision: the working method that connects ZHA's formal language to German engineering culture</div>
+
+<!-- CHAPTER 3: THE PERCEPTION GAP -->
+<section id="questions" class="chapter">
+  <div class="chapter-number reveal">03</div>
+  <div class="read">
+    <div class="reveal">
+      <div class="chapter-label">A Direct Conversation</div>
+      <h2 class="chapter-title">The questions German clients are right to ask.</h2>
+    </div>
+    <p class="body-text reveal">We have heard, through various channels, that German cultural and civic institutions — potential clients we want to work with — have questions about ZHA. We think evasion would be the wrong response. These are legitimate questions. Here is how we would answer them directly.</p>
+  </div>
+
+  <div class="wide" style="margin-top:48px">
+    <div class="perception-cards reveal">
+
+      <div class="perception-item">
+        <div class="perception-header" onclick="togglePerception(this)">
+          <div class="perception-q">"Is ZHA still the same creative force without Zaha Hadid?"</div>
+          <div class="perception-toggle">+</div>
+        </div>
+        <div class="perception-body">
+          <div class="perception-col question">
+            <h4>The concern</h4>
+            <p>Zaha Hadid was a singular creative personality. Her death in 2016 raises the reasonable question of whether the practice retains its design rigour — or whether it has become a brand operating on past momentum, applying a visual style without the intellectual depth that generated it.</p>
+          </div>
+          <div class="perception-col answer">
+            <h4>Our answer</h4>
+            <p>The practice Zaha built was always larger than one person. The parametric methodology she pioneered — the use of computation to derive form from performance, the insistence on research before design — is embedded in our culture and our tools. Since 2016 ZHA has completed over 40 major buildings across five continents. The design quality of those buildings is the most honest answer to this question. We would ask that German clients look at what we have built recently — not just what we built when Zaha was alive.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="perception-item">
+        <div class="perception-header" onclick="togglePerception(this)">
+          <div class="perception-q">"Are ZHA projects not expensive to build and to maintain?"</div>
+          <div class="perception-toggle">+</div>
+        </div>
+        <div class="perception-body">
+          <div class="perception-col question">
+            <h4>The concern</h4>
+            <p>Complex forms require specialist subcontractors. Bespoke details are harder to repair than standard ones. German public procurement is rightly attentive to lifecycle cost and Wirtschaftlichkeit — and ZHA's formal language can appear to be in tension with these values.</p>
+          </div>
+          <div class="perception-col answer">
+            <h4>Our answer</h4>
+            <p>This is a fair challenge, and we do not dismiss it. Our honest answer has two parts. First: parametric optimisation, properly applied, produces materially efficient structures — the Phaeno's concrete form used significantly less material than a conventional structural solution. Efficiency and complexity are not opposites when the form is generated by performance criteria. Second: we have delivered civic institutions — MAXXI, Riverside Museum, the Broad — within agreed public budgets. We are willing to open a transparent conversation about cost methodology with any German institutional client.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="perception-item">
+        <div class="perception-header" onclick="togglePerception(this)">
+          <div class="perception-q">"Is parametric design a style, or does it have substance?"</div>
+          <div class="perception-toggle">+</div>
+        </div>
+        <div class="perception-body">
+          <div class="perception-col question">
+            <h4>The concern</h4>
+            <p>German architectural culture is deeply Sachlich — it respects form that follows from function, rational argument, structural logic. There is a reasonable concern that 'parametric' is decorative complexity applied post-hoc: a signature aesthetic rather than a principled methodology.</p>
+          </div>
+          <div class="perception-col answer">
+            <h4>Our answer</h4>
+            <p>The concern is legitimate, and we would apply it critically to some work in the broader parametric field. ZHA's own methodology distinguishes between form-finding that emerges from genuine performance optimisation — structural efficiency, environmental response, circulation logic, material behaviour — and form that deploys parametric tools for purely visual effect. Our CODE research group produces academic-grade work on computational design, material science and environmental performance. We welcome scrutiny of specific projects against specific performance criteria. That is the right conversation to have.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="perception-item">
+        <div class="perception-header" onclick="togglePerception(this)">
+          <div class="perception-q">"Does ZHA understand German planning culture and local context?"</div>
+          <div class="perception-toggle">+</div>
+        </div>
+        <div class="perception-body">
+          <div class="perception-col question">
+            <h4>The concern</h4>
+            <p>German public procurement is layered, consultative and contextually attentive. There is a concern that international "star architects" impose a global formal language without genuine engagement with place, community or the specifics of German urban culture — and that this produces buildings that feel foreign to the cities they inhabit.</p>
+          </div>
+          <div class="perception-col answer">
+            <h4>Our answer</h4>
+            <p>The Phaeno Science Centre in Wolfsburg stands as our answer to this. It was inserted into a difficult brownfield gap between the railway and the city, raised on pilotis to create public space at grade, and designed around the specific cultural and educational brief of a German public institution. It is not a foreign object; it is a building that responded to a very specific site, brief and civic context. We would argue that parametric design is inherently context-responsive — the variables being optimised can and should include site orientation, wind, view, the geometry of adjacent streets. We want to make the argument for this in each specific German context we are invited to address.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="perception-item">
+        <div class="perception-header" onclick="togglePerception(this)">
+          <div class="perception-q">"Can ZHA work within German public competition processes?"</div>
+          <div class="perception-toggle">+</div>
+        </div>
+        <div class="perception-body">
+          <div class="perception-col question">
+            <h4>The concern</h4>
+            <p>German civic and cultural buildings are typically procured through formal Wettbewerb (competition) processes. These are resource-intensive for international practices. German clients sometimes worry that large international offices are not genuinely committed to German competitions — that they submit polished imagery without deep engagement with the brief.</p>
+          </div>
+          <div class="perception-col answer">
+            <h4>Our answer</h4>
+            <p>We have participated in and won major international competitions throughout our history. Where we choose to engage with a German competition, we do so with genuine commitment and with a team that understands the specific cultural, institutional and urban context of that brief. We are also open to conversations with German institutions that are considering their briefs before a formal competition is launched — the most interesting buildings tend to emerge from the longest conversations, not the shortest procurement windows.</p>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- STATS -->
+<div class="wide">
+  <div class="stats-row reveal">
+    <div class="stat-item">
+      <div class="stat-num" data-target="44">0</div>
+      <div class="stat-desc">Major civic and cultural buildings completed globally since 2010</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-num" data-target="36">0</div>
+      <div class="stat-desc">Countries where ZHA has completed built projects</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-num" data-target="12">0</div>
+      <div class="stat-desc">Major museums and cultural institutions in ZHA's built portfolio</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-num" data-target="30">0</div>
+      <div class="stat-desc">Years since Germany's first ZHA building — still standing, still taught</div>
+    </div>
+  </div>
+</div>
+
+<!-- CHAPTER 4: VALUES ALIGNMENT -->
+<section id="values" class="chapter" style="background:var(--surface);padding:120px 0">
+  <div class="chapter-number reveal wide">04</div>
+  <div class="read">
+    <div class="reveal">
+      <div class="chapter-label">Shared Values</div>
+      <h2 class="chapter-title">Where German institutional values and ZHA's approach genuinely meet.</h2>
+    </div>
+    <p class="body-text reveal">Rather than claiming a perfect alignment, we want to be honest about where the overlaps are real and where the tensions require work. The most useful relationships between architects and clients are founded on shared values — not the projection of what a client wants to hear.</p>
+  </div>
+
+  <div class="wide" style="margin-top:48px">
+    <div class="values-header reveal">
+      <div class="values-header-col german">What German institutions value</div>
+      <div class="values-header-col zha">How ZHA approaches this</div>
+    </div>
+
+    <div class="reveal">
+      <div class="value-pair">
+        <div class="value-side german">
+          <div class="v-label">Nachhaltigkeit</div>
+          <div class="v-title">Sustainability as obligation, not option</div>
+          German institutions expect environmental performance to be embedded in the building from the outset — not an add-on, not greenwashing. Embodied carbon, operational energy, material circularity and biodiversity impact are all now part of the procurement conversation.
+        </div>
+        <div class="value-side zha">
+          <div class="v-label">ZHA's position</div>
+          <div class="v-title">Parametric optimisation as environmental tool</div>
+          Our computational approach to form-finding naturally optimises for material efficiency — producing structural forms that achieve the same performance with less material. We quantify this. Phaeno's optimised concrete structure is one example; every major project now carries embodied carbon analysis from early design stage. Sustainability in our work is a design generator, not a compliance checklist.
+        </div>
+      </div>
+    </div>
+
+    <div class="reveal">
+      <div class="value-pair">
+        <div class="value-side german">
+          <div class="v-label">Handwerk und Ingenieurskunst</div>
+          <div class="v-title">Craft and engineering excellence</div>
+          Germany has an extraordinary tradition of construction precision. Public institutions expect their buildings to be crafted at the highest standard — details resolved, tolerances tight, materials performing as intended for generations. This is not conservatism; it is the respect for quality that produced the Bauhaus.
+        </div>
+        <div class="value-side zha">
+          <div class="v-label">ZHA's position</div>
+          <div class="v-title">Form complexity as the demand for more craft, not less</div>
+          Complex geometry requires greater precision from fabricators and contractors, not less. ZHA's projects have always been collaborations with specialist engineers and manufacturers — from the concrete specialists who built Phaeno to the steel fabricators of the London Aquatics Centre. Our forms set a higher standard; they do not lower one. We see German engineering culture as our natural partner in this.
+        </div>
+      </div>
+    </div>
+
+    <div class="reveal">
+      <div class="value-pair">
+        <div class="value-side german">
+          <div class="v-label">Öffentlicher Auftrag</div>
+          <div class="v-title">The public mandate</div>
+          German civic and cultural buildings carry a democratic obligation. They are built with public money, for public benefit. They must be accessible, welcoming, transparent in purpose — not monuments to an architect's ego or a donor's prestige. Public space and public life are not afterthoughts.
+        </div>
+        <div class="value-side zha">
+          <div class="v-label">ZHA's position</div>
+          <div class="v-title">Civic generosity embedded in formal language</div>
+          The Phaeno's pilotis create a covered public plaza that belongs to the city, not the institution. MAXXI's spiralling galleries are organised around a free public courtyard. The Riverside Museum wraps around a public marina. These are not gestures — they are structural commitments. Our formal language, at its best, creates spaces that feel like they belong to everyone who enters them.
+        </div>
+      </div>
+    </div>
+
+    <div class="reveal">
+      <div class="value-pair">
+        <div class="value-side german">
+          <div class="v-label">Forschung und Wissen</div>
+          <div class="v-title">Research and intellectual rigour</div>
+          Germany's universities, museums and cultural institutions are embedded in a research culture. They expect their buildings to be the product of rigorous thinking — not fashion. They are sophisticated clients who will read, question and challenge a design argument. They want an intellectual interlocutor, not a service provider.
+        </div>
+        <div class="value-side zha">
+          <div class="v-label">ZHA's position</div>
+          <div class="v-title">Research as the foundation of practice</div>
+          ZHA's CODE (Computation and Design) group produces academic-level research on parametric urbanism, material systems, environmental performance and new spatial typologies. Patrik Schumacher's theoretical work on parametricism is one of the most debated architectural positions of the past two decades — whether one agrees or disagrees. We do not practice without theory. We think that should make us natural partners for German research institutions.
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="read" style="margin-top:48px">
+    <div class="pull-quote reveal">
+      "The Bauhaus held that art and craft must be unified. We hold that computation and construction must be unified. The argument is the same; only the tools have changed."
+    </div>
+    <p class="body-text reveal">We are not claiming to be the only practice that can make these arguments. We are claiming that these arguments are genuinely ours — that they emerge from how we work, not from how we present ourselves. The difference matters to German clients, and it matters to us.</p>
+  </div>
+</section>
+
+<!-- CHAPTER 5: BUILT PRECEDENTS -->
+<section id="work" class="chapter">
+  <div class="chapter-number reveal">05</div>
+  <div class="read">
+    <div class="reveal">
+      <div class="chapter-label">For Civic and Cultural Clients</div>
+      <h2 class="chapter-title">What ZHA has built for public institutions.</h2>
+    </div>
+    <p class="body-text reveal">The buildings below are not selected to impress. They are selected because they represent the kinds of commissions that German cultural and civic institutions are considering: museums, opera houses, cultural centres, port authorities, universities. Each one was a public client. Each one required navigating a complex institutional brief, a public mandate and a scrutinous procurement process.</p>
+    <p class="body-text reveal">We offer them not as precedents to replicate, but as evidence of a practice that has spent thirty years working seriously with public institutions — and that takes the responsibility of that work seriously.</p>
+  </div>
+
+  <div class="wide" style="margin-top:48px">
+    <div class="precedents-list reveal">
+
+      <div class="precedent-row" onclick="openLightbox('images/museum-interior.jpg','MAXXI – National Museum of XXI Century Arts, Rome, 2010')">
+        <img class="precedent-img" src="images/museum-interior.jpg" alt="MAXXI Rome"/>
+        <div class="precedent-content">
+          <div class="precedent-meta">
+            <div class="precedent-tag">National Museum</div>
+            <div class="precedent-year">Rome, 2010</div>
+          </div>
+          <h3>MAXXI — National Museum of XXI Century Arts</h3>
+          <div class="precedent-location">Rome, Italy · Client: Italian Ministry of Culture</div>
+          <p>30,000 sqm of galleries, public spaces and cultural infrastructure, inserted into a complex urban site in Rome's Flaminio district. The building organises five overlapping gallery "tubes" around a free public courtyard — a civic gesture that belongs to the neighbourhood. Winner of the RIBA Stirling Prize. One of the most studied contemporary museums in the world.</p>
+          <div class="precedent-relevance">
+            <strong>Relevance for German institutional clients</strong>
+            The most direct precedent for a major national museum commission. Demonstrates ZHA's capacity to work with a demanding public cultural brief, to create generous civic space alongside gallery infrastructure, and to navigate Italian public procurement — which is rarely straightforward.
+          </div>
+        </div>
+      </div>
+
+      <div class="precedent-row" onclick="openLightbox('images/opera-hall.jpg','Guangzhou Opera House, China, 2010')">
+        <img class="precedent-img" src="images/opera-hall.jpg" alt="Guangzhou Opera House"/>
+        <div class="precedent-content">
+          <div class="precedent-meta">
+            <div class="precedent-tag">Opera House</div>
+            <div class="precedent-year">Guangzhou, 2010</div>
+          </div>
+          <h3>Guangzhou Opera House</h3>
+          <div class="precedent-location">Guangzhou, China · Client: Guangzhou Municipal Government</div>
+          <p>A 1,800-seat opera house and 400-seat multifunctional theatre, set alongside a new cultural district on the Pearl River. The twin-volume form — two "pebbles" eroded by water — resolves the complex acoustic requirements of world-class performance spaces within a fluid formal language. Technical execution was achieved through detailed collaboration with acoustic engineers and specialist contractors.</p>
+          <div class="precedent-relevance">
+            <strong>Relevance for German institutional clients</strong>
+            Germany has more opera houses per capita than any country in the world — and many require modernisation. This building demonstrates that ZHA can work with the demanding acoustic, technical and civic requirements of a major performing arts institution at international standard.
+          </div>
+        </div>
+      </div>
+
+      <div class="precedent-row" onclick="openLightbox('images/glasgow.jpg','Riverside Museum, Glasgow, 2011')">
+        <img class="precedent-img" src="images/glasgow.jpg" alt="Riverside Museum Glasgow"/>
+        <div class="precedent-content">
+          <div class="precedent-meta">
+            <div class="precedent-tag">Public Museum</div>
+            <div class="precedent-year">Glasgow, 2011</div>
+          </div>
+          <h3>Riverside Museum</h3>
+          <div class="precedent-location">Glasgow, Scotland · Client: Glasgow City Council</div>
+          <p>A transport and social history museum built on the banks of the Clyde, in a post-industrial district of the city. The building's section — a continuous Z-form connecting the street to the river — creates a democratic through-route for the public regardless of museum admission. Winner of the European Museum of the Year Award. One of Glasgow's most visited public attractions.</p>
+          <div class="precedent-relevance">
+            <strong>Relevance for German institutional clients</strong>
+            A public museum built for a city council, in a northern European context, serving a working-class community narrative. Demonstrates civic accessibility, genuine public engagement, and the integration of a contemporary building into an established urban grain.
+          </div>
+        </div>
+      </div>
+
+      <div class="precedent-row" onclick="openLightbox('images/port-building.jpg','Port House, Antwerp, 2016')">
+        <img class="precedent-img" src="images/port-building.jpg" alt="Port House Antwerp"/>
+        <div class="precedent-content">
+          <div class="precedent-meta">
+            <div class="precedent-tag">Civic Authority</div>
+            <div class="precedent-year">Antwerp, 2016</div>
+          </div>
+          <h3>Port House</h3>
+          <div class="precedent-location">Antwerp, Belgium · Client: Port of Antwerp Authority</div>
+          <p>A new headquarters for the Port of Antwerp, formed by inserting a contemporary crystalline volume above a derelict 19th-century fire station. The project is simultaneously an act of conservation and an act of architectural confidence — preserving the historic shell while creating a distinctly contemporary addition that respects but does not mimic its context. A public authority building that opened the year Zaha Hadid died.</p>
+          <div class="precedent-relevance">
+            <strong>Relevance for German institutional clients</strong>
+            Germany has many historic buildings requiring contemporary intervention and adaptation. Port House demonstrates ZHA's capacity to work with existing fabric, to be sensitive to context without being nostalgic, and to deliver a public authority building within a complex heritage setting.
+          </div>
+        </div>
+      </div>
+
+      <div class="precedent-row" onclick="openLightbox('images/university.jpg','Vienna University of Economics Library & Learning Centre, 2013')">
+        <img class="precedent-img" src="images/university.jpg" alt="Vienna WU Library"/>
+        <div class="precedent-content">
+          <div class="precedent-meta">
+            <div class="precedent-tag">University / Research</div>
+            <div class="precedent-year">Vienna, 2013</div>
+          </div>
+          <h3>Vienna University of Economics — Library &amp; Learning Centre</h3>
+          <div class="precedent-location">Vienna, Austria · Client: Vienna University of Economics &amp; Business</div>
+          <p>Part of a new campus development that brought together six international architects for the Vienna University of Economics and Business (WU). ZHA's building houses the main university library and learning centre — a complex brief requiring flexible research space, collaborative zones, quiet study environments and public-facing cultural programming, all within a German-language academic context.</p>
+          <div class="precedent-relevance">
+            <strong>Relevance for German institutional clients</strong>
+            A German-language university building, procured through a European competition process, delivered within the regulatory and cultural framework most comparable to Germany. The most direct demonstration that ZHA can work within academic procurement culture familiar to German university and research clients.
+          </div>
+        </div>
+      </div>
+
+      <div class="precedent-row" onclick="openLightbox('images/museum-exterior.jpg','Eli & Edythe Broad Art Museum, Michigan State University, 2012')">
+        <img class="precedent-img" src="images/museum-exterior.jpg" alt="Broad Museum Michigan"/>
+        <div class="precedent-content">
+          <div class="precedent-meta">
+            <div class="precedent-tag">University Museum</div>
+            <div class="precedent-year">Michigan, 2012</div>
+          </div>
+          <h3>Eli &amp; Edythe Broad Art Museum</h3>
+          <div class="precedent-location">Michigan State University, USA · Client: Michigan State University</div>
+          <p>A 4,600 sqm art museum on a major American university campus. The building's pleated stainless steel and glass facade responds to the campus geometry through parametric analysis of solar exposure, view corridors and pedestrian movement patterns. The interior creates gallery spaces of varying character within a unified formal system — flexible enough for contemporary art, intimate enough for the specific work.</p>
+          <div class="precedent-relevance">
+            <strong>Relevance for German institutional clients</strong>
+            A university art museum demonstrating the integration of parametric environmental analysis with gallery programming. The scale, brief and academic context are closely comparable to the university museum commissions German higher education institutions periodically seek.
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- CHAPTER 6: INVITATION -->
+<section id="invitation" class="invitation">
+  <div class="invitation-bg"></div>
+  <div class="invitation-content">
+    <div class="chapter-label reveal">The Invitation</div>
+    <h2 class="invitation-title reveal">Let's build something together.</h2>
+    <p class="invitation-text reveal">Germany is entering a significant period of cultural and civic investment — museums being rethought, opera houses being reconsidered, universities expanding their public-facing ambitions. The conversations that lead to the most interesting buildings tend to start long before a competition brief is published.</p>
+    <p class="invitation-text reveal" style="transition-delay:0.15s">We are not making a sales pitch. We are extending an invitation to a genuine conversation about what your institution needs and whether ZHA's approach — its strengths and its particular way of working — is a good fit for what you are trying to build.</p>
+    <p class="invitation-text reveal" style="font-style:italic;transition-delay:0.3s">"We started in Germany. We have never stopped thinking about what it means to work here again."</p>
+    <a href="mailto:info@zaha-hadid.com" class="invitation-cta reveal" style="transition-delay:0.45s">Begin the conversation</a>
+  </div>
+</section>
+
+<footer>
+  <div class="footer-logo">ZHA<span>.</span></div>
+  <div class="footer-text">
+    Zaha Hadid Architects<br/>
+    10 Bowling Green Lane, London EC1R 0BQ<br/>
+    info@zaha-hadid.com
+  </div>
+</footer>
+
+<!-- LIGHTBOX -->
+<div id="lightbox" onclick="closeLightbox()">
+  <div id="lightbox-close" onclick="closeLightbox()">×</div>
+  <img id="lightbox-img" src="" alt=""/>
+  <div id="lightbox-caption"></div>
+</div>
+
+<script>
+// SCROLL PROGRESS
+window.addEventListener('scroll',()=>{
+  const prog=(window.scrollY/(document.body.scrollHeight-window.innerHeight))*100;
+  document.getElementById('progress-bar').style.width=prog+'%';
+},{passive:true});
+
+// NAV SCROLL STATE
+window.addEventListener('scroll',()=>{
+  const nav=document.getElementById('main-nav');
+  nav.classList.toggle('scrolled',window.scrollY>80);
+},{passive:true});
+
+// NAV HIDE/SHOW
+let lastY=0;
+window.addEventListener('scroll',()=>{
+  const nav=document.getElementById('main-nav');
+  if(window.scrollY>lastY&&window.scrollY>200) nav.classList.add('hidden');
+  else nav.classList.remove('hidden');
+  lastY=window.scrollY;
+},{passive:true});
+
+// REVEAL
+const observer=new IntersectionObserver((entries)=>{
+  entries.forEach(e=>{if(e.isIntersecting)e.target.classList.add('visible');});
+},{threshold:0.08});
+document.querySelectorAll('.reveal').forEach(el=>observer.observe(el));
+
+// ANIMATED COUNTERS
+const counterObserver=new IntersectionObserver((entries)=>{
+  entries.forEach(e=>{
+    if(e.isIntersecting){
+      const el=e.target;
+      const target=+el.dataset.target;
+      let count=0;
+      const step=target/50;
+      const timer=setInterval(()=>{
+        count+=step;
+        if(count>=target){count=target;clearInterval(timer);}
+        el.textContent=Math.floor(count)+(target>20?'+':'');
+      },30);
+      counterObserver.unobserve(el);
+    }
+  });
+},{threshold:0.5});
+document.querySelectorAll('.stat-num').forEach(el=>counterObserver.observe(el));
+
+// PERCEPTION ACCORDION
+function togglePerception(header){
+  const item=header.parentElement;
+  const body=item.querySelector('.perception-body');
+  const wasOpen=item.classList.contains('open');
+  document.querySelectorAll('.perception-item').forEach(i=>{
+    i.classList.remove('open');
+    i.querySelector('.perception-body').classList.remove('open');
+  });
+  if(!wasOpen){
+    item.classList.add('open');
+    body.classList.add('open');
+  }
+}
+
+// LIGHTBOX
+function openLightbox(src,caption){
+  document.getElementById('lightbox-img').src=src;
+  document.getElementById('lightbox-caption').textContent=caption||'';
+  document.getElementById('lightbox').classList.add('open');
+  document.body.style.overflow='hidden';
+}
+function closeLightbox(){
+  document.getElementById('lightbox').classList.remove('open');
+  document.body.style.overflow='';
+}
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeLightbox();});
+
+// TIMELINE DOTS
+const sections=['hero','foundation','legacy','questions','values','work','invitation'];
+const dots=document.querySelectorAll('.t-dot');
+dots.forEach(d=>{
+  d.addEventListener('click',()=>{
+    document.getElementById(d.dataset.section).scrollIntoView({behavior:'smooth'});
+  });
+});
+const sectionObserver=new IntersectionObserver((entries)=>{
+  entries.forEach(e=>{
+    if(e.isIntersecting){
+      const id=e.target.id;
+      dots.forEach(d=>d.classList.toggle('active',d.dataset.section===id));
+      document.querySelectorAll('.nav-links a').forEach(a=>{
+        a.classList.toggle('active',a.getAttribute('href')==='#'+id);
+      });
+    }
+  });
+},{threshold:0.35});
+sections.forEach(id=>{const el=document.getElementById(id);if(el)sectionObserver.observe(el);});
+</script>
+</body>
+</html>
